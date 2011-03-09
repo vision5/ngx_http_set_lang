@@ -529,7 +529,7 @@ ngx_http_set_lang (ngx_conf_t *cf, ngx_command_t *cmd, void *cnf)
     ngx_http_set_lang_method_t      *method, *next_method;
     char                            *p;
 
-    conf = ngx_http_conf_get_module_loc_conf (cf, ngx_http_set_lang_module);    // == cnf?
+    conf = ngx_http_conf_get_module_loc_conf (cf, ngx_http_set_lang_module);
 
 
     // check for duplicates
@@ -666,7 +666,7 @@ ngx_http_set_lang_init (ngx_conf_t *cf)
         return NGX_ERROR;
     }
 
-    v->get_handler = ngx_http_rewrite_var;
+    v->get_handler = ndk_http_rewrite_var;
 
 
     index = ngx_http_get_variable_index (cf, &var_name);
