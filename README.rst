@@ -60,8 +60,8 @@ Installation
 Copyright
 ---------
 
-  Marcus Clyne (c) 2010
-
+ - Marcus Clyne (c) 2010
+ - Rick van Hattem (c) 2011
 
 License
 -------
