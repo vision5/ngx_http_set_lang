@@ -24,6 +24,7 @@ static ngx_int_t    ngx_http_set_lang_from_geoip        (ngx_http_request_t *r, 
 static ngx_int_t    ngx_http_set_lang_from_host         (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v);
 static ngx_int_t    ngx_http_set_lang_from_referer      (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v);
 static ngx_int_t    ngx_http_set_lang_from_var          (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v);
+static ngx_int_t    ngx_http_set_lang_from_default      (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v);
 
 static char *       ngx_http_set_lang                   (ngx_conf_t *cf, ngx_command_t *cmd, void *cnf);
 static ngx_int_t    ngx_http_set_lang_from_methods      (ngx_http_request_t *r, ngx_str_t *v);
@@ -79,6 +80,7 @@ static ngx_http_set_lang_method_t   ngx_http_set_lang_methods [] = {
     {ngx_http_set_lang_from_geoip,          ngx_string ("geoip")},
     {ngx_http_set_lang_from_host,           ngx_string ("host")},
     {ngx_http_set_lang_from_referer,        ngx_string ("referer")},
+    {ngx_http_set_lang_from_default,        ngx_string ("default")},
     {NULL,                                  ngx_null_string}
 };
 
@@ -395,6 +397,21 @@ ngx_http_set_lang_from_geoip (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_
     // TODO
 
     return  NGX_DECLINED;
+}
+
+
+
+static ngx_int_t
+ngx_http_set_lang_from_default (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v)
+{
+    // Default to the first language in the lang_list
+    ngx_str_t *lang;
+
+    lang = conf->langs->elts;
+    v->data = lang->data;
+    v->len = lang->len;
+
+    return  NGX_OK;
 }
 
 
