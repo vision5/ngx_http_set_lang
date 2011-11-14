@@ -377,15 +377,28 @@ ngx_http_set_lang_from_post (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t
 static ngx_int_t
 ngx_http_set_lang_from_cookie (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v)
 {
-    ngx_str_t       cookie;
+    ngx_str_t       cookie, *lang;
+    ngx_uint_t      i;
 
     if (ngx_http_parse_multi_header_lines (&r->headers_in.cookies, &conf->cookie, &cookie) == NGX_DECLINED)
         return  NGX_DECLINED;
 
-    v->data = cookie.data;
-    v->len = cookie.len;
+    // compare to lang list
 
-    return  NGX_OK;
+    lang = conf->langs->elts;
+
+    for (i=conf->langs->nelts; i; i--,lang++) {
+
+        if (cookie.len == lang->len && !ngx_strncasecmp (cookie.data, lang->data, cookie.len)) {
+
+            v->data = cookie.data;
+            v->len = cookie.len;
+
+            return  NGX_OK;
+        }
+    }
+
+    return  NGX_DECLINED;
 }
 
 
@@ -405,9 +418,13 @@ static ngx_int_t
 ngx_http_set_lang_from_default (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v)
 {
     // Default to the first language in the lang_list
-    ngx_str_t *lang;
+    ngx_str_t   *lang;
+    ngx_uint_t  i;
 
     lang = conf->langs->elts;
+    i = conf->langs->nelts;
+    while(--i)lang++;
+
     v->data = lang->data;
     v->len = lang->len;
 
