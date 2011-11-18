@@ -6,6 +6,11 @@
 
 #include    <ndk.h>
 
+#define MINUTE 60
+#define HOUR 60 * MINUTE
+#define DAY 24 * MINUTE
+#define YEAR 365 * DAY
+#define COOKIE_PARAM_BUFFER 40
 
 // TODO : add setting a variable that dictates the method - $set_lang_method
 
@@ -199,6 +204,27 @@ ngx_http_set_lang_from_methods (ngx_http_request_t *r, ngx_str_t *v)
     ngx_http_variable_value_t           *mv;
     ngx_http_set_lang_func_pt            func;
 
+    // Generate the extra cookie params (path + expires)
+    static char cookie_params[COOKIE_PARAM_BUFFER];
+    struct tm timestruct;
+    time_t now;
+
+    // Fetch the current time
+    time(&now);
+
+    // Default the expires date to 1 year in the future
+    now += YEAR;
+
+    // Format the string as RFC 2616 specifies
+    gmtime_r(&now, &timestruct);
+
+    strftime(
+        cookie_params,
+        COOKIE_PARAM_BUFFER,
+        "; path=/; expires=%a, %d %b %Y %H:%M:%S GMT",
+        &timestruct
+    );
+
     llcf = ngx_http_get_module_loc_conf (r, ngx_http_set_lang_module);
 
     if (!llcf->enable)
@@ -226,7 +252,7 @@ ngx_http_set_lang_from_methods (ngx_http_request_t *r, ngx_str_t *v)
 
                 // create lang cookie
 
-                len = llcf->cookie.len + v->len + sizeof ("; path=/");
+                len = llcf->cookie.len + v->len + sizeof (cookie_params);
 
                 cookie = ngx_pnalloc (r->pool, len + 1);
                 if (cookie == NULL) {
@@ -237,7 +263,7 @@ ngx_http_set_lang_from_methods (ngx_http_request_t *r, ngx_str_t *v)
                 *p++ = '=';
 
                 p = ngx_copy (p, v->data, v->len);
-                p = ngx_copy (p, "; path=/", sizeof ("; path=/"));
+                p = ngx_copy (p, cookie_params, sizeof (cookie_params));
 
 
                 // add lang cookie to main response
