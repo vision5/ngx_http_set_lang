@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2009 Marcus Clyne
  */
@@ -445,12 +444,9 @@ ngx_http_set_lang_from_default (ngx_http_request_t *r, ngx_http_set_lang_loc_con
 {
     // Default to the first language in the lang_list
     ngx_str_t   *lang;
-    ngx_uint_t  i;
 
-    lang = conf->langs->elts;
-    i = conf->langs->nelts;
-    while(--i)lang++;
-
+    lang = ((ngx_str_t *)conf->langs->elts) + (conf->langs->nelts - 1);
+    
     v->data = lang->data;
     v->len = lang->len;
 
