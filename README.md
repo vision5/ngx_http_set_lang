@@ -54,6 +54,13 @@ Copyright
 
   Marcus Clyne (c) 2010
 
+
+License
+=======
+
+BSD
+
+
 See Also
 ========
 
@@ -61,8 +68,3 @@ See Also
   and much more
   * **[Simpl](https://github.com/simpl)** : A shell platform that integrates repositories stored on Github, Bitbucket
   etc., to help facilitate shell-based tasks
-
-License
-=======
-
-  BSD
