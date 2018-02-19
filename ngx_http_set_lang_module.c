@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2009 Marcus Clyne
  */
@@ -6,6 +5,11 @@
 
 #include    <ndk.h>
 
+#define MINUTE 60
+#define HOUR 60 * MINUTE
+#define DAY 24 * MINUTE
+#define YEAR 365 * DAY
+#define COOKIE_PARAM_BUFFER 40
 
 // TODO : add setting a variable that dictates the method - $set_lang_method
 
@@ -24,6 +28,7 @@ static ngx_int_t    ngx_http_set_lang_from_geoip        (ngx_http_request_t *r, 
 static ngx_int_t    ngx_http_set_lang_from_host         (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v);
 static ngx_int_t    ngx_http_set_lang_from_referer      (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v);
 static ngx_int_t    ngx_http_set_lang_from_var          (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v);
+static ngx_int_t    ngx_http_set_lang_from_default      (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v);
 
 static char *       ngx_http_set_lang                   (ngx_conf_t *cf, ngx_command_t *cmd, void *cnf);
 static ngx_int_t    ngx_http_set_lang_from_methods      (ngx_http_request_t *r, ngx_str_t *v);
@@ -79,6 +84,7 @@ static ngx_http_set_lang_method_t   ngx_http_set_lang_methods [] = {
     {ngx_http_set_lang_from_geoip,          ngx_string ("geoip")},
     {ngx_http_set_lang_from_host,           ngx_string ("host")},
     {ngx_http_set_lang_from_referer,        ngx_string ("referer")},
+    {ngx_http_set_lang_from_default,        ngx_string ("default")},
     {NULL,                                  ngx_null_string}
 };
 
@@ -197,6 +203,27 @@ ngx_http_set_lang_from_methods (ngx_http_request_t *r, ngx_str_t *v)
     ngx_http_variable_value_t           *mv;
     ngx_http_set_lang_func_pt            func;
 
+    // Generate the extra cookie params (path + expires)
+    static char cookie_params[COOKIE_PARAM_BUFFER];
+    struct tm timestruct;
+    time_t now;
+
+    // Fetch the current time
+    time(&now);
+
+    // Default the expires date to 1 year in the future
+    now += YEAR;
+
+    // Format the string as RFC 2616 specifies
+    gmtime_r(&now, &timestruct);
+
+    strftime(
+        cookie_params,
+        COOKIE_PARAM_BUFFER,
+        "; path=/; expires=%a, %d %b %Y %H:%M:%S GMT",
+        &timestruct
+    );
+
     llcf = ngx_http_get_module_loc_conf (r, ngx_http_set_lang_module);
 
     if (!llcf->enable)
@@ -224,7 +251,7 @@ ngx_http_set_lang_from_methods (ngx_http_request_t *r, ngx_str_t *v)
 
                 // create lang cookie
 
-                len = llcf->cookie.len + v->len + sizeof ("; path=/");
+                len = llcf->cookie.len + v->len + sizeof (cookie_params);
 
                 cookie = ngx_pnalloc (r->pool, len + 1);
                 if (cookie == NULL) {
@@ -235,7 +262,7 @@ ngx_http_set_lang_from_methods (ngx_http_request_t *r, ngx_str_t *v)
                 *p++ = '=';
 
                 p = ngx_copy (p, v->data, v->len);
-                p = ngx_copy (p, "; path=/", sizeof ("; path=/"));
+                p = ngx_copy (p, cookie_params, sizeof (cookie_params));
 
 
                 // add lang cookie to main response
@@ -375,15 +402,28 @@ ngx_http_set_lang_from_post (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t
 static ngx_int_t
 ngx_http_set_lang_from_cookie (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v)
 {
-    ngx_str_t       cookie;
+    ngx_str_t       cookie, *lang;
+    ngx_uint_t      i;
 
     if (ngx_http_parse_multi_header_lines (&r->headers_in.cookies, &conf->cookie, &cookie) == NGX_DECLINED)
         return  NGX_DECLINED;
 
-    v->data = cookie.data;
-    v->len = cookie.len;
+    // compare to lang list
 
-    return  NGX_OK;
+    lang = conf->langs->elts;
+
+    for (i=conf->langs->nelts; i; i--,lang++) {
+
+        if (cookie.len == lang->len && !ngx_strncasecmp (cookie.data, lang->data, cookie.len)) {
+
+            v->data = cookie.data;
+            v->len = cookie.len;
+
+            return  NGX_OK;
+        }
+    }
+
+    return  NGX_DECLINED;
 }
 
 
@@ -395,6 +435,22 @@ ngx_http_set_lang_from_geoip (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_
     // TODO
 
     return  NGX_DECLINED;
+}
+
+
+
+static ngx_int_t
+ngx_http_set_lang_from_default (ngx_http_request_t *r, ngx_http_set_lang_loc_conf_t *conf, ngx_str_t *v)
+{
+    // Default to the first language in the lang_list
+    ngx_str_t   *lang;
+
+    lang = ((ngx_str_t *)conf->langs->elts) + (conf->langs->nelts - 1);
+    
+    v->data = lang->data;
+    v->len = lang->len;
+
+    return  NGX_OK;
 }
 
 
